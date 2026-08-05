@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>台灣即時電力通</title>
+  <meta name="description" content="即時監看台電發電結構、總發電量與 CO2 指標。支援快照紀錄、用電群組、年度供給與鄰國電價比較。" />
+  <meta property="og:title" content="台灣即時電力通" />
+  <meta property="og:description" content="即時監看台電發電結構與 CO2 指標" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --blue-deep: #062a9a;
+      --blue-mid: #0b63c9;
+      --teal: #00b89a;
+      --green: #36d06a;
+      --glass: rgba(6, 20, 70, 0.45);
+      --glass-strong: rgba(4, 14, 52, 0.58);
+      --border: rgba(255, 255, 255, 0.2);
+      --text: #fff;
+      --muted: rgba(255, 255, 255, 0.72);
+      --orange: #ff9f43;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: "Noto Sans TC", "PingFang TC", "Helvetica Neue", sans-serif;
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.55;
+      overflow-x: hidden;
+      background:
+        radial-gradient(ellipse 90% 55% at 15% 0%, rgba(90, 150, 255, 0.4), transparent 55%),
+        radial-gradient(ellipse 70% 50% at 90% 25%, rgba(0, 210, 180, 0.28), transparent 52%),
+        linear-gradient(168deg, var(--blue-deep) 0%, var(--blue-mid) 36%, var(--teal) 70%, var(--green) 100%);
+      background-attachment: fixed;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    img { display: block; max-width: 100%; }
+
+    .wrap { width: min(1140px, calc(100% - 2rem)); margin: 0 auto; }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.15rem 0 0.4rem;
+      gap: 1rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      font-weight: 800;
+      font-size: 1.05rem;
+      letter-spacing: 0.01em;
+    }
+
+    .brand-mark {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: linear-gradient(145deg, #1b55ff, #6a2cf0 55%, #00d4aa);
+      display: grid;
+      place-items: center;
+      box-shadow: 0 8px 22px rgba(0, 40, 150, 0.35);
+      flex-shrink: 0;
+    }
+
+    .brand-mark svg { width: 22px; height: 22px; }
+
+    .nav-links {
+      display: flex;
+      gap: 1.2rem;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .nav-links a:hover { color: #fff; }
+
+    /* Hero: one composition */
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr 1.05fr;
+      gap: 2rem 2.5rem;
+      align-items: center;
+      padding: 1.8rem 0 3.2rem;
+      min-height: min(86vh, 760px);
+    }
+
+    .hero-copy { animation: rise 0.75s ease both; }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.32rem 0.85rem;
+      margin-bottom: 1.1rem;
+      backdrop-filter: blur(10px);
+    }
+
+    .hero h1 {
+      font-size: clamp(2.55rem, 5.4vw, 3.85rem);
+      font-weight: 800;
+      line-height: 1.08;
+      letter-spacing: -0.025em;
+      margin-bottom: 0.95rem;
+      text-shadow: 0 6px 32px rgba(0, 25, 90, 0.35);
+    }
+
+    .hero-lead {
+      font-size: clamp(1rem, 2vw, 1.15rem);
+      color: var(--muted);
+      max-width: 32ch;
+      margin-bottom: 1.7rem;
+    }
+
+    .store-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1.35rem;
+    }
+
+    .store-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.65rem;
+      background: #0d0d0d;
+      color: #fff;
+      border-radius: 13px;
+      padding: 0.55rem 1.05rem 0.55rem 0.85rem;
+      min-width: 168px;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
+    }
+
+    .store-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 34px rgba(0, 0, 0, 0.38);
+    }
+
+    .store-btn svg { width: 28px; height: 28px; flex-shrink: 0; }
+    .store-btn small { display: block; font-size: 0.62rem; opacity: 0.75; line-height: 1.1; }
+    .store-btn strong { display: block; font-size: 1.05rem; font-weight: 600; line-height: 1.15; }
+
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem 1.2rem;
+      font-size: 0.86rem;
+      color: var(--muted);
+    }
+
+    .hero-meta span {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #5dffb0;
+      box-shadow: 0 0 10px #5dffb0;
+    }
+
+    /* Phone cluster */
+    .hero-visual {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 520px;
+      animation: float-in 0.95s 0.12s ease both;
+    }
+
+    .glow {
+      position: absolute;
+      width: 340px;
+      height: 340px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(130, 220, 255, 0.5), transparent 70%);
+      filter: blur(18px);
+      z-index: 0;
+      animation: pulse 4.5s ease-in-out infinite;
+    }
+
+    .phone {
+      position: relative;
+      z-index: 2;
+      width: min(260px, 58vw);
+      border-radius: 34px;
+      padding: 9px;
+      background: linear-gradient(150deg, rgba(255,255,255,0.42), rgba(255,255,255,0.1));
+      box-shadow:
+        0 36px 70px rgba(0, 20, 80, 0.45),
+        0 0 0 1px rgba(255,255,255,0.28);
+    }
+
+    .phone img {
+      width: 100%;
+      border-radius: 26px;
+      aspect-ratio: 9 / 19.5;
+      object-fit: cover;
+      object-position: top center;
+      background: #0a3a9a;
+    }
+
+    .phone.side {
+      position: absolute;
+      z-index: 1;
+      width: min(200px, 42vw);
+      opacity: 0.92;
+      filter: saturate(1.05);
+    }
+
+    .phone.side-left {
+      left: 2%;
+      top: 12%;
+      transform: rotate(-8deg) translateY(10px);
+      animation: drift-l 5.5s ease-in-out infinite;
+    }
+
+    .phone.side-right {
+      right: 2%;
+      top: 18%;
+      transform: rotate(8deg) translateY(24px);
+      animation: drift-r 5.5s ease-in-out infinite;
+      z-index: 1;
+    }
+
+    .phone.main {
+      z-index: 3;
+      animation: float-y 4.8s ease-in-out infinite;
+    }
+
+    /* Sections */
+    .section { padding: 0.5rem 0 3.5rem; }
+
+    .section-head {
+      text-align: center;
+      margin-bottom: 1.75rem;
+    }
+
+    .section-head h2 {
+      font-size: clamp(1.55rem, 3vw, 2.05rem);
+      font-weight: 800;
+      margin-bottom: 0.4rem;
+    }
+
+    .section-head p { color: var(--muted); }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.95rem;
+    }
+
+    .feature-card {
+      background: var(--glass-strong);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 1.25rem 1.2rem;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      transition: transform 0.25s ease, background 0.25s ease;
+      animation: rise 0.7s ease both;
+    }
+
+    .feature-card:nth-child(2) { animation-delay: 0.06s; }
+    .feature-card:nth-child(3) { animation-delay: 0.12s; }
+    .feature-card:nth-child(4) { animation-delay: 0.18s; }
+    .feature-card:nth-child(5) { animation-delay: 0.24s; }
+    .feature-card:nth-child(6) { animation-delay: 0.3s; }
+
+    .feature-card:hover {
+      transform: translateY(-4px);
+      background: rgba(6, 20, 70, 0.68);
+    }
+
+    .feature-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 11px;
+      background: rgba(255, 255, 255, 0.12);
+      display: grid;
+      place-items: center;
+      margin-bottom: 0.8rem;
+      color: #9ad4ff;
+    }
+
+    .feature-icon svg { width: 18px; height: 18px; }
+    .feature-card h3 { font-size: 1.02rem; font-weight: 700; margin-bottom: 0.35rem; }
+    .feature-card p { font-size: 0.9rem; color: var(--muted); }
+
+    /* Integrated preview strip */
+    .preview {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 1rem;
+      margin-top: 0.5rem;
+    }
+
+    .panel {
+      background: var(--glass-strong);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 1.35rem;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    .panel h3 { font-size: 1.12rem; font-weight: 700; margin-bottom: 0.3rem; }
+    .panel > .sub { color: var(--muted); font-size: 0.88rem; margin-bottom: 1rem; }
+
+    .shot-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.65rem;
+    }
+
+    .shot {
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(0,0,0,0.2);
+      aspect-ratio: 9 / 16;
+    }
+
+    .shot img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: top center;
+      transition: transform 0.35s ease;
+    }
+
+    .shot:hover img { transform: scale(1.04); }
+
+    .unit-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.6rem;
+    }
+
+    .unit {
+      background: rgba(0, 0, 0, 0.26);
+      border-radius: 14px;
+      padding: 0.7rem;
+    }
+
+    .unit::before {
+      content: "";
+      display: block;
+      width: 16px;
+      height: 3px;
+      background: var(--orange);
+      border-radius: 2px;
+      margin-bottom: 0.4rem;
+    }
+
+    .unit .name { font-size: 0.8rem; margin-bottom: 0.1rem; }
+    .unit .mw { font-size: 1.1rem; font-weight: 800; }
+    .unit .fuel { font-size: 0.7rem; color: var(--muted); margin-top: 0.15rem; }
+
+    .price-list { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.85rem; }
+
+    .price-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.22);
+      border-radius: 12px;
+      padding: 0.65rem 0.8rem;
+    }
+
+    .price-item .country {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .swatch { width: 10px; height: 10px; border-radius: 50%; }
+    .price-item .num { font-weight: 800; font-size: 1rem; text-align: right; }
+    .price-item .sub { font-size: 0.66rem; color: var(--muted); text-align: right; }
+
+    .cta {
+      text-align: center;
+      padding: 2.4rem 1.4rem;
+      margin: 0.5rem 0 3rem;
+      background: var(--glass-strong);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      backdrop-filter: blur(16px);
+    }
+
+    .cta h2 {
+      font-size: clamp(1.45rem, 3vw, 1.95rem);
+      font-weight: 800;
+      margin-bottom: 0.45rem;
+    }
+
+    .cta p { color: var(--muted); margin-bottom: 1.25rem; }
+    .cta .store-row { justify-content: center; margin-bottom: 0; }
+
+    footer {
+      border-top: 1px solid rgba(255,255,255,0.12);
+      padding: 1.4rem 0 2rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.7rem 1.4rem;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    footer a:hover { color: #fff; }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(18px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes float-in {
+      from { opacity: 0; transform: translateY(26px) scale(0.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes float-y {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    @keyframes drift-l {
+      0%, 100% { transform: rotate(-8deg) translateY(10px); }
+      50% { transform: rotate(-6deg) translateY(0); }
+    }
+
+    @keyframes drift-r {
+      0%, 100% { transform: rotate(8deg) translateY(24px); }
+      50% { transform: rotate(6deg) translateY(14px); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.5; transform: scale(1); }
+      50% { opacity: 0.85; transform: scale(1.08); }
+    }
+
+    @media (max-width: 960px) {
+      .hero {
+        grid-template-columns: 1fr;
+        min-height: auto;
+        text-align: center;
+        padding-top: 1.2rem;
+      }
+      .hero-lead { margin-inline: auto; }
+      .store-row, .hero-meta { justify-content: center; }
+      .hero-visual { min-height: 460px; margin-top: 0.5rem; }
+      .phone.side-left { left: 4%; }
+      .phone.side-right { right: 4%; }
+      .feature-grid { grid-template-columns: 1fr 1fr; }
+      .preview { grid-template-columns: 1fr; }
+      .nav-links { display: none; }
+    }
+
+    @media (max-width: 560px) {
+      .feature-grid { grid-template-columns: 1fr; }
+      .phone.side { display: none; }
+      .hero-visual { min-height: auto; }
+      .phone.main { width: min(280px, 72vw); }
+      .shot-grid { grid-template-columns: 1fr 1fr; }
+      .shot-grid .shot:last-child { display: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav class="nav">
+      <a class="brand" href="#">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M13 2L4 14h7l-1 8 10-14h-7z" fill="#fff"/></svg>
+        </span>
+        台灣即時電力通
+      </a>
+      <div class="nav-links">
+        <a href="#features">功能</a>
+        <a href="#preview">預覽</a>
+        <a href="#download">下載</a>
+      </div>
+    </nav>
+
+    <header class="hero">
+      <div class="hero-copy">
+        <div class="eyebrow">觀電小幫手 · iOS</div>
+        <!-- <div class="eyebrow">觀電小幫手 · iOS &amp; Android</div> -->
+        <h1>台灣即時電力通</h1>
+        <p class="hero-lead">即時監看台電發電結構與 CO2 指標，掌握總發電量、能源明細與用電碳足跡。</p>
+
+        <div class="store-row" id="download">
+          <a class="store-btn"
+             href="https://apps.apple.com/tw/app/%E5%8F%B0%E7%81%A3%E5%8D%B3%E6%99%82%E9%9B%BB%E5%8A%9B%E9%80%9A/id6717608297"
+             target="_blank" rel="noopener noreferrer"
+             aria-label="Download on the App Store">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M16.365 1.43c0 1.14-.493 2.213-1.287 3.01-.83.83-1.946 1.36-3.032 1.28-.13-1.11.4-2.26 1.2-3.07.84-.86 2.24-1.48 3.12-1.22zM20.7 17.2c-.55 1.27-.81 1.84-1.52 2.96-.99 1.55-2.38 3.48-4.11 3.5-1.53.02-1.93-.99-4.02-.98-2.09.01-2.53 1-4.06.98-1.73-.02-3.05-1.76-4.04-3.3C.8 17.4-.5 12.8 1.3 9.6c1.14-2.02 2.95-3.2 4.65-3.2 1.73 0 2.82 1.02 4.26 1.02 1.4 0 2.25-1.03 4.27-1.03 1.52 0 3.13.83 4.26 2.26-3.74 2.05-3.14 7.38.96 8.55z"/>
+            </svg>
+            <span>
+              <small>Download on the</small>
+              <strong>App Store</strong>
+            </span>
+          </a>
+          <a class="store-btn"
+             href="https://play.google.com/store/apps/details?id=com.hailuo.taipowerChart"
+             target="_blank" rel="noopener noreferrer"
+             aria-label="Get it on Google Play" 
+             style="display:none">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="#EA4335" d="M3.6 2.2l9.7 9.7-2.4 2.4L3 5.4c-.3-.5-.2-1 .6-1.5z"/>
+              <path fill="#FBBC04" d="M13.3 11.9l2.6 2.6-8.5 4.9c-.7.4-1.3.2-1.6-.3l7.5-7.2z"/>
+              <path fill="#4285F4" d="M20.2 10.4l-3.7-2.1-3.2 3.2 3.2 3.2 3.7-2.1c.9-.5.9-1.4 0-2.2z"/>
+              <path fill="#34A853" d="M3 18.6l7.9-7.9 2.4 2.4L5.4 21c-.8.5-1.3.2-1.6-.4-.1-.3-.2-.6-.2-1z"/>
+            </svg>
+            <span>
+              <small>GET IT ON</small>
+              <strong>Google Play</strong>
+            </span>
+          </a>
+        </div>
+
+        <div class="hero-meta">
+          <span><i class="dot" aria-hidden="true"></i>即時發電結構</span>
+          <span>年度 CO₂ 排放</span>
+          <span>快照與用電群組</span>
+        </div>
+      </div>
+
+      <div class="hero-visual" aria-hidden="true">
+        <div class="glow"></div>
+        <div class="phone side side-left">
+          <img src="assets/screen-detail.png" alt="" width="470" height="1024" loading="eager" />
+        </div>
+        <div class="phone main">
+          <img src="assets/screen-home.png" alt="" width="470" height="1024" loading="eager" />
+        </div>
+        <div class="phone side side-right">
+          <img src="assets/screen-stats.png" alt="" width="470" height="1024" loading="eager" />
+        </div>
+      </div>
+    </header>
+
+    <section class="section" id="features">
+      <div class="section-head">
+        <h2>整合 App 核心體驗</h2>
+        <p>把首頁總覽、能源明細、快照與統計一次收進口袋</p>
+      </div>
+
+      <div class="feature-grid">
+        <article class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3-9 4 18 3-9h4"/></svg>
+          </div>
+          <h3>即時電力總覽</h3>
+          <p>一眼掌握更新時間、總發電量與每度電碳排，快速判斷當下電網狀態。</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          </div>
+          <h3>台電能源明細</h3>
+          <p>依燃煤、燃氣、汽電共生等分類查看各機組發電量，細節一覽無遺。</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 17V9"/><path d="M12 17V7"/><path d="M16 17v-5"/></svg>
+          </div>
+          <h3>快照與圖表</h3>
+          <p>儲存關鍵時刻的電力結構，回看長條圖並比較不同時間點的發電排行。</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21a9 9 0 1 0-9-9"/><path d="M12 7v5l3 2"/><path d="M3 12h3"/></svg>
+          </div>
+          <h3>用電計算群組</h3>
+          <p>自訂群組累計用電度數，同步估算產生的 CO₂，讓日常用電更有感。</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18"/><path d="M3 12h18"/></svg>
+          </div>
+          <h3>年度電力供給</h3>
+          <p>圓餅圖呈現各能源供給占比，掌握燃氣、燃煤與再生能源長期結構。</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17l4-8 4 4 4-10 4 14"/><path d="M3 21h18"/></svg>
+          </div>
+          <h3>亞鄰電價比較</h3>
+          <p>對照台灣、韓國、日本平均電價，用清楚圖表理解區域電價差異。</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="preview">
+      <div class="section-head">
+        <h2>主視圖一覽</h2>
+        <p>從機組明細到鄰國電價，資訊層次與 App 一致</p>
+      </div>
+
+      <div class="preview">
+        <div class="panel">
+          <h3>畫面預覽</h3>
+          <p class="sub">首頁總覽 · 能源明細 · 其它統計</p>
+          <div class="shot-grid">
+            <div class="shot">
+              <img src="assets/screen-home.png" alt="首頁總覽畫面" width="470" height="1024" loading="lazy" />
+            </div>
+            <div class="shot">
+              <img src="assets/screen-detail.png" alt="台電能源明細畫面" width="470" height="1024" loading="lazy" />
+            </div>
+            <div class="shot">
+              <img src="assets/screen-stats.png" alt="其它統計畫面" width="470" height="1024" loading="lazy" />
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>台電能源明細</h3>
+          <p class="sub">依機組分類瀏覽即時發電量</p>
+          <div class="unit-grid">
+            <div class="unit">
+              <div class="name">大林#1</div>
+              <div class="mw">758.6 MW</div>
+              <div class="fuel">燃煤</div>
+            </div>
+            <div class="unit">
+              <div class="name">和平#2</div>
+              <div class="mw">624.0 MW</div>
+              <div class="fuel">燃煤</div>
+            </div>
+            <div class="unit">
+              <div class="name">台中#5</div>
+              <div class="mw">812.3 MW</div>
+              <div class="fuel">燃煤</div>
+            </div>
+            <div class="unit">
+              <div class="name">興達#3</div>
+              <div class="mw">501.2 MW</div>
+              <div class="fuel">燃煤</div>
+            </div>
+          </div>
+
+          <h3 style="margin-top:1.2rem">亞鄰平均電價</h3>
+          <p class="sub" style="margin-bottom:0">01 月明細 · TWD/kWh</p>
+          <div class="price-list">
+            <div class="price-item">
+              <div class="country"><span class="swatch" style="background:#3b82f6"></span>台灣</div>
+              <div>
+                <div class="num">3.50</div>
+                <div class="sub">TWD/kWh</div>
+              </div>
+            </div>
+            <div class="price-item">
+              <div class="country"><span class="swatch" style="background:#2dd4bf"></span>韓國</div>
+              <div>
+                <div class="num">3.96</div>
+                <div class="sub">174.60 KRW/kWh</div>
+              </div>
+            </div>
+            <div class="price-item">
+              <div class="country"><span class="swatch" style="background:#fbbf24"></span>日本</div>
+              <div>
+                <div class="num">4.54</div>
+                <div class="sub">22.19 JPY/kWh</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta">
+      <h2>立刻下載，隨時掌握電力動態</h2>
+      <p>iPhone、iPad 與 Android 皆可使用</p>
+      <div class="store-row">
+        <a class="store-btn"
+           href="https://apps.apple.com/tw/app/%E5%8F%B0%E7%81%A3%E5%8D%B3%E6%99%82%E9%9B%BB%E5%8A%9B%E9%80%9A/id6717608297"
+           target="_blank" rel="noopener noreferrer">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M16.365 1.43c0 1.14-.493 2.213-1.287 3.01-.83.83-1.946 1.36-3.032 1.28-.13-1.11.4-2.26 1.2-3.07.84-.86 2.24-1.48 3.12-1.22zM20.7 17.2c-.55 1.27-.81 1.84-1.52 2.96-.99 1.55-2.38 3.48-4.11 3.5-1.53.02-1.93-.99-4.02-.98-2.09.01-2.53 1-4.06.98-1.73-.02-3.05-1.76-4.04-3.3C.8 17.4-.5 12.8 1.3 9.6c1.14-2.02 2.95-3.2 4.65-3.2 1.73 0 2.82 1.02 4.26 1.02 1.4 0 2.25-1.03 4.27-1.03 1.52 0 3.13.83 4.26 2.26-3.74 2.05-3.14 7.38.96 8.55z"/>
+          </svg>
+          <span>
+            <small>Download on the</small>
+            <strong>App Store</strong>
+          </span>
+        </a>
+        <a class="store-btn"
+           href="https://play.google.com/store/apps/details?id=com.hailuo.taipowerChart"
+           target="_blank" rel="noopener noreferrer" style="display:none">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="#EA4335" d="M3.6 2.2l9.7 9.7-2.4 2.4L3 5.4c-.3-.5-.2-1 .6-1.5z"/>
+            <path fill="#FBBC04" d="M13.3 11.9l2.6 2.6-8.5 4.9c-.7.4-1.3.2-1.6-.3l7.5-7.2z"/>
+            <path fill="#4285F4" d="M20.2 10.4l-3.7-2.1-3.2 3.2 3.2 3.2 3.7-2.1c.9-.5.9-1.4 0-2.2z"/>
+            <path fill="#34A853" d="M3 18.6l7.9-7.9 2.4 2.4L5.4 21c-.8.5-1.3.2-1.6-.4-.1-.3-.2-.6-.2-1z"/>
+          </svg>
+          <span>
+            <small>GET IT ON</small>
+            <strong>Google Play</strong>
+          </span>
+        </a>
+      </div>
+    </section>
+
+    <footer>
+      <span>© 2026 hailuo · 台灣即時電力通</span>
+      <div style="display:flex;gap:1.2rem;flex-wrap:wrap">
+        <a href="https://apps.apple.com/tw/app/%E5%8F%B0%E7%81%A3%E5%8D%B3%E6%99%82%E9%9B%BB%E5%8A%9B%E9%80%9A/id6717608297" target="_blank" rel="noopener noreferrer">App Store</a>
+        <a href="https://play.google.com/store/apps/details?id=com.hailuo.taipowerChart" target="_blank" rel="noopener noreferrer" style="display:none">Google Play</a>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>
